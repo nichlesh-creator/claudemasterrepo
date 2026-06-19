@@ -1,7 +1,20 @@
 import SwiftUI
 
 struct ProviderPickerView: View {
-    let event: CalendarEvent
+    let title: String
+    let initialProviders: [Provider]
+
+    // Navigate from a single event
+    init(event: CalendarEvent) {
+        self.title = event.title
+        self.initialProviders = event.attendees
+    }
+
+    // Navigate from "Message All" — aggregate across events
+    init(title: String, providers: [Provider]) {
+        self.title = title
+        self.initialProviders = providers
+    }
 
     @State private var providers: [Provider] = []
     @State private var isLoadingContacts = true
@@ -17,7 +30,7 @@ struct ProviderPickerView: View {
             if isLoadingContacts {
                 HStack {
                     Spacer()
-                    ProgressView("Looking up phone numbers...")
+                    ProgressView("Looking up phone numbers…")
                     Spacer()
                 }
                 .listRowSeparator(.hidden)
@@ -37,8 +50,19 @@ struct ProviderPickerView: View {
                 }
             }
         }
-        .navigationTitle(event.title)
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(allSelected ? "Deselect All" : "Select All") {
+                    let newValue = !allSelected
+                    for i in providers.indices where providers[i].phoneNumber != nil {
+                        providers[i].isSelected = newValue
+                    }
+                }
+                .disabled(providers.filter { $0.phoneNumber != nil }.isEmpty)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             Button {
                 navigateToCompose = true
@@ -66,11 +90,15 @@ struct ProviderPickerView: View {
         }
     }
 
+    private var allSelected: Bool {
+        providers.filter { $0.phoneNumber != nil }.allSatisfy { $0.isSelected }
+    }
+
     private func loadPhoneNumbers() async {
         let hasAccess = await ContactsService.shared.requestAccess()
         contactsAccessDenied = !hasAccess
 
-        var loaded = event.attendees
+        var loaded = initialProviders
 
         if hasAccess {
             for i in loaded.indices {

@@ -3,6 +3,15 @@ import SwiftUI
 struct EventListView: View {
     @EnvironmentObject var calendarService: CalendarService
     @State private var showSettings = false
+    @State private var showAllProviders = false
+
+    // All unique providers across every event — deduplicated by name
+    private var allProviders: [Provider] {
+        var seen = Set<String>()
+        return calendarService.events
+            .flatMap { $0.attendees }
+            .filter { seen.insert($0.name).inserted }
+    }
 
     var body: some View {
         List {
@@ -51,8 +60,32 @@ struct EventListView: View {
                 .disabled(calendarService.isLoading)
             }
         }
+        // "Message Everyone" button — shown when events are loaded
+        .safeAreaInset(edge: .bottom) {
+            if !calendarService.events.isEmpty && !calendarService.isLoading {
+                Button {
+                    showAllProviders = true
+                } label: {
+                    Label(
+                        "Message All \(allProviders.count) Provider\(allProviders.count == 1 ? "" : "s")",
+                        systemImage: "message.fill"
+                    )
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .padding()
+                .background(.regularMaterial)
+            }
+        }
         .navigationDestination(isPresented: $showSettings) {
             SetupView()
+        }
+        .navigationDestination(isPresented: $showAllProviders) {
+            ProviderPickerView(title: "All Providers", providers: allProviders)
         }
         .task {
             if calendarService.events.isEmpty {
