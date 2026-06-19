@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- REQUIRED: Replace with your reversed client ID from Google Cloud Console -->
+    <!-- Format: com.googleusercontent.apps.XXXXXXXXXX-xxxxxxxxxxxxxxxxxxxxxxxxxxxx -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>REPLACE_WITH_REVERSED_CLIENT_ID</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- REQUIRED: Replace with your OAuth 2.0 client ID -->
+    <!-- Format: XXXXXXXXXX-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com -->
+    <key>GIDClientID</key>
+    <string>REPLACE_WITH_CLIENT_ID.apps.googleusercontent.com</string>
+
+    <!-- Permissions -->
+    <key>NSContactsUsageDescription</key>
+    <string>CalendarProviderSMS looks up phone numbers for your calendar attendees so you can text them directly.</string>
+</dict>
+</plist>
