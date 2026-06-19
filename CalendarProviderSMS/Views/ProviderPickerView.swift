@@ -74,7 +74,11 @@ struct ProviderPickerView: View {
 
         if hasAccess {
             for i in loaded.indices {
-                loaded[i].phoneNumber = await ContactsService.shared.findPhoneNumber(for: loaded[i].email)
+                if let email = loaded[i].email {
+                    loaded[i].phoneNumber = await ContactsService.shared.findPhoneNumber(forEmail: email)
+                } else {
+                    loaded[i].phoneNumber = await ContactsService.shared.findPhoneNumber(forName: loaded[i].name)
+                }
                 loaded[i].isSelected = loaded[i].phoneNumber != nil
             }
         }
@@ -92,9 +96,11 @@ private struct ProviderRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(provider.name)
                     .font(.body)
-                Text(provider.email)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if let email = provider.email {
+                    Text(email)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 if let phone = provider.phoneNumber {
                     Text(phone)
                         .font(.caption)

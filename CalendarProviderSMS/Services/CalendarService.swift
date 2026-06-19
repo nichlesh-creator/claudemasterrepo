@@ -93,6 +93,12 @@ class CalendarService: ObservableObject {
                 providers.append(Provider(email: org.email, displayName: org.displayName))
             }
 
+            // Fall back to parsing names from the event title when no attendees are listed.
+            // Matches the pattern "[LastName, FirstName]" used by many scheduling systems.
+            if providers.isEmpty {
+                providers = Self.extractProvidersFromTitle(item.summary ?? "")
+            }
+
             guard !providers.isEmpty else { return nil }
 
             return CalendarEvent(
@@ -102,6 +108,24 @@ class CalendarService: ObservableObject {
                 endDate: endDate,
                 attendees: providers
             )
+        }
+    }
+}
+
+    // Extracts provider names from square brackets in the event title.
+    // Example: "E1-am [Chernin, Tyl]" → Provider(name: "Chernin, Tyl")
+    private static func extractProvidersFromTitle(_ title: String) -> [Provider] {
+        let pattern = "\\[([^\\]]+)\\]"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let nsTitle = title as NSString
+        let matches = regex.matches(in: title, range: NSRange(location: 0, length: nsTitle.length))
+
+        return matches.compactMap { match -> Provider? in
+            guard match.numberOfRanges > 1 else { return nil }
+            let range = match.range(at: 1)
+            guard range.location != NSNotFound else { return nil }
+            let name = nsTitle.substring(with: range).trimmingCharacters(in: .whitespaces)
+            return name.isEmpty ? nil : Provider(name: name)
         }
     }
 }
