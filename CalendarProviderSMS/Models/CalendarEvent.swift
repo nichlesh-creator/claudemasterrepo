@@ -11,7 +11,7 @@ struct CalendarEvent: Identifiable {
 // MARK: - Google Calendar API Codable models
 
 struct GoogleCalendarEventsResponse: Codable {
-    let items: [GoogleCalendarEventItem]
+    let items: [GoogleCalendarEventItem]?
 }
 
 struct GoogleCalendarEventItem: Codable {
@@ -20,6 +20,7 @@ struct GoogleCalendarEventItem: Codable {
     let start: GoogleEventDateTime
     let end: GoogleEventDateTime
     let attendees: [GoogleAttendee]?
+    let organizer: GoogleOrganizer?
 }
 
 struct GoogleEventDateTime: Codable {
@@ -44,5 +45,20 @@ struct GoogleAttendee: Codable {
     let email: String
     let displayName: String?
     let responseStatus: String?
-    let `self`: Bool?
+}
+
+struct GoogleOrganizer: Codable {
+    let email: String
+    let displayName: String?
+}
+
+// MARK: - Google API error envelope
+
+struct GoogleErrorResponse: Codable {
+    let error: GoogleAPIError
+}
+
+struct GoogleAPIError: Codable {
+    let code: Int
+    let message: String
 }

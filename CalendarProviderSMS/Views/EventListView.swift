@@ -1,32 +1,31 @@
 import SwiftUI
 
 struct EventListView: View {
-    @EnvironmentObject var calendarService: GoogleCalendarService
+    @EnvironmentObject var calendarService: CalendarService
+    @State private var showSettings = false
 
     var body: some View {
         List {
             if calendarService.isLoading {
                 HStack {
                     Spacer()
-                    ProgressView("Loading events...")
+                    ProgressView("Loading events…")
                     Spacer()
                 }
                 .listRowSeparator(.hidden)
-            } else if calendarService.events.isEmpty && calendarService.errorMessage == nil {
+            } else if let error = calendarService.errorMessage {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                    .font(.callout)
+                    .listRowSeparator(.hidden)
+            } else if calendarService.events.isEmpty {
                 ContentUnavailableView(
                     "No Events Found",
                     systemImage: "calendar.badge.exclamationmark",
-                    description: Text("No upcoming events with attendees in the next 30 days.")
+                    description: Text("No upcoming events with providers in the next 30 days.")
                 )
                 .listRowSeparator(.hidden)
             } else {
-                if let error = calendarService.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                        .listRowSeparator(.hidden)
-                }
-
                 ForEach(calendarService.events) { event in
                     NavigationLink(destination: ProviderPickerView(event: event)) {
                         EventRow(event: event)
@@ -37,8 +36,10 @@ struct EventListView: View {
         .navigationTitle("Upcoming Events")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Sign Out", role: .destructive) {
-                    calendarService.signOut()
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gear")
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
@@ -49,6 +50,9 @@ struct EventListView: View {
                 }
                 .disabled(calendarService.isLoading)
             }
+        }
+        .navigationDestination(isPresented: $showSettings) {
+            SetupView()
         }
         .task {
             if calendarService.events.isEmpty {
@@ -76,7 +80,7 @@ private struct EventRow: View {
             Text(dateText)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Text("\(event.attendees.count) attendee\(event.attendees.count == 1 ? "" : "s")")
+            Text("\(event.attendees.count) provider\(event.attendees.count == 1 ? "" : "s")")
                 .font(.caption)
                 .foregroundStyle(.blue)
         }

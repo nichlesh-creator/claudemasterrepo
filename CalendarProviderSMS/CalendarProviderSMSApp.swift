@@ -1,17 +1,13 @@
 import SwiftUI
-import GoogleSignIn
 
 @main
 struct CalendarProviderSMSApp: App {
-    @StateObject private var calendarService = GoogleCalendarService()
+    @StateObject private var calendarService = CalendarService()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(calendarService)
-                .onOpenURL { url in
-                    GIDSignIn.sharedInstance.handle(url)
-                }
         }
     }
 }

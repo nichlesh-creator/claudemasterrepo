@@ -1,14 +1,14 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject var calendarService: GoogleCalendarService
+    @EnvironmentObject var calendarService: CalendarService
 
     var body: some View {
         NavigationStack {
-            if calendarService.isSignedIn {
+            if calendarService.isConfigured {
                 EventListView()
             } else {
-                SignInView()
+                SetupView()
             }
         }
     }

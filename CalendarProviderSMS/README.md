@@ -1,33 +1,32 @@
 # CalendarProviderSMS
 
-An iOS app that reads your Google Calendar events, finds attendees' phone numbers from your Contacts, and opens the native Messages app to send them all a text.
+An iOS app that reads a **public** Google Calendar, matches providers to phone numbers in your Contacts, and opens the native Messages app to send them a group text — no sign-in required.
 
 ## App Flow
 
-1. Sign in with Google (Google Calendar read access only)
-2. Browse upcoming events (next 30 days) that have attendees
-3. Tap an event → attendees are matched to your Contacts automatically
-4. Toggle which attendees to include
+1. Enter a Google API key and a public Calendar ID on the setup screen
+2. The app fetches upcoming events (next 30 days) that have providers listed
+3. Tap an event → providers are automatically matched to your Contacts
+4. Toggle which providers to include
 5. Write your message → tap **Send via Messages**
 6. The native Messages app opens with all recipients and your message pre-filled
 
 ## Setup Instructions
 
-### 1. Create a Google Cloud Project
+### 1. Make your Google Calendar public
+
+1. Open [calendar.google.com](https://calendar.google.com)
+2. Click the three-dot menu next to your calendar → **Settings and sharing**
+3. Under **Access permissions**, check **Make available to public**
+4. Copy your **Calendar ID** from the "Integrate calendar" section at the bottom
+
+### 2. Get a Google API Key (free)
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com)
-2. Create a new project (e.g., "CalendarProviderSMS")
-3. Go to **APIs & Services → Library**
-4. Search for **Google Calendar API** and enable it
-
-### 2. Create an OAuth 2.0 Client ID
-
-1. Go to **APIs & Services → Credentials**
-2. Click **Create Credentials → OAuth client ID**
-3. Choose **iOS** as the application type
-4. Enter your app's Bundle ID (e.g., `com.yourname.CalendarProviderSMS`)
-5. Click **Create**
-6. Note your **Client ID** and **Reversed client ID**
+2. Create a new project (or reuse one)
+3. Go to **APIs & Services → Library** → search **Google Calendar API** → enable it
+4. Go to **APIs & Services → Credentials** → **Create Credentials → API Key**
+5. (Optional) Restrict the key to the Google Calendar API for security
 
 ### 3. Create an Xcode Project
 
@@ -51,44 +50,35 @@ Drag all files from this folder into your Xcode project:
 
 ### 5. Configure Info.plist
 
-In Xcode, open `Info.plist` (or your target's Info tab) and add:
+Add the contents of `Resources/Info.plist` to your project's Info.plist (or replace it). The only required entry is `NSContactsUsageDescription`.
 
-| Key | Value |
-|-----|-------|
-| `GIDClientID` | Your OAuth Client ID (e.g., `123456789-abc.apps.googleusercontent.com`) |
-| `CFBundleURLTypes` → URL Schemes | Your **Reversed** Client ID (e.g., `com.googleusercontent.apps.123456789-abc`) |
-| `NSContactsUsageDescription` | Already included — explains why contacts access is needed |
+No OAuth client ID, URL schemes, or third-party SDKs are needed.
 
-### 6. Add GoogleSignIn via Swift Package Manager
-
-1. In Xcode: **File → Add Package Dependencies**
-2. Enter: `https://github.com/google/GoogleSignIn-iOS`
-3. Choose version: **Up to Next Major from 7.0.0**
-4. Add **GoogleSignIn** to your app target
-
-### 7. Add MessageUI Framework
+### 6. Add MessageUI Framework
 
 1. Select your app target in Xcode
 2. Go to **General → Frameworks, Libraries, and Embedded Content**
 3. Click **+** and add **MessageUI.framework**
 
-### 8. Build and Run
+### 7. Build and Run
 
 > **Important:** SMS sending only works on a **real iPhone** — not the simulator.
 
 Connect your iPhone, select it as the run destination, and build.
 
+On first launch, enter your API key and Calendar ID, then tap **Load Calendar**.
+
 ## Notes
 
-- Only events with other attendees are shown (you are excluded from the list)
-- Attendees without a matching phone number in your Contacts are shown grayed out and cannot be selected
-- The app never sends SMS automatically — it always opens the native Messages app for your review before sending
-- Google Calendar access is read-only; the app never modifies your calendar
+- The app reads only events that list at least one attendee or organizer as a provider
+- Providers matched to a phone number in Contacts are pre-selected; unmatched ones are shown greyed out
+- The app never sends SMS automatically — it opens the native Messages app for your review
+- The API key and calendar ID are stored on-device only (iOS UserDefaults)
 
 ## Permissions Used
 
 | Permission | Why |
 |------------|-----|
-| Google Calendar (read-only) | To fetch your upcoming events and attendees |
-| Contacts (read) | To look up phone numbers for attendee emails |
+| Google Calendar API (read-only, API key) | To fetch upcoming events and their providers |
+| Contacts (read) | To look up phone numbers for provider emails |
 | Messages | Opens the native Messages app to send SMS |
