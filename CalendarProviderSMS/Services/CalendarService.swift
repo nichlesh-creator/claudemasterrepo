@@ -3,7 +3,6 @@ import Combine
 
 @MainActor
 class CalendarService: ObservableObject {
-    // @Published so ContentView re-renders when these change
     @Published var apiKey: String {
         didSet { UserDefaults.standard.set(apiKey, forKey: "calendarAPIKey") }
     }
@@ -79,7 +78,6 @@ class CalendarService: ObservableObject {
             guard let startDate = item.start.resolvedDate,
                   let endDate = item.end.resolvedDate else { return nil }
 
-            // Collect providers from attendees + organizer (deduplicated by email)
             var seen = Set<String>()
             var providers: [Provider] = []
 
@@ -96,7 +94,7 @@ class CalendarService: ObservableObject {
             // Fall back to parsing names from the event title when no attendees are listed.
             // Matches the pattern "[LastName, FirstName]" used by many scheduling systems.
             if providers.isEmpty {
-                providers = Self.extractProvidersFromTitle(item.summary ?? "")
+                providers = CalendarService.extractProvidersFromTitle(item.summary ?? "")
             }
 
             guard !providers.isEmpty else { return nil }
@@ -110,7 +108,6 @@ class CalendarService: ObservableObject {
             )
         }
     }
-}
 
     // Extracts provider names from square brackets in the event title.
     // Example: "E1-am [Chernin, Tyl]" → Provider(name: "Chernin, Tyl")
