@@ -37,6 +37,8 @@ class CalendarService: ObservableObject {
     // MARK: - State
 
     @Published var assignments: [StaffAssignment] = []
+    /// Non-nil only on Thu/Fri → Monday transitions; holds today's E1W for the "Outgoing" line.
+    @Published var outgoingE1W: StaffAssignment?
     @Published var isLoading    = false
     @Published var errorMessage: String?
 
@@ -101,6 +103,18 @@ class CalendarService: ObservableObject {
         errorMessage = nil
         do {
             assignments = try await loadEvents(for: nextBusinessDay)
+
+            // On Thu/Fri → Monday: also fetch today's E1W so we can show
+            // "E1W (Fri): outgoing" and "E1W (Mon): incoming" in the message.
+            let cal = Calendar.current
+            let todayWeekday  = cal.component(.weekday, from: Date())
+            let targetWeekday = cal.component(.weekday, from: nextBusinessDay)
+            if (todayWeekday == 5 || todayWeekday == 6) && targetWeekday == 2 {
+                let todayEvents = try await loadEvents(for: cal.startOfDay(for: Date()))
+                outgoingE1W = todayEvents.first { $0.prefix == "E1W" }
+            } else {
+                outgoingE1W = nil
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

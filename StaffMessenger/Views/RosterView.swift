@@ -5,6 +5,7 @@ struct RosterView: View {
     @EnvironmentObject var calendarService: CalendarService
 
     @State private var assignments: [StaffAssignment] = []
+    @State private var outgoingE1W: StaffAssignment?
     @State private var isLoadingContacts = false
     @State private var showSettings = false
     @State private var showSMS = false
@@ -24,7 +25,9 @@ struct RosterView: View {
     }
 
     private var messageText: String {
-        MessageComposer.compose(for: calendarService.nextBusinessDay, assignments: assignments)
+        MessageComposer.compose(for: calendarService.nextBusinessDay,
+                                assignments: assignments,
+                                outgoingE1W: outgoingE1W)
     }
 
     private var allRecipients: [String] {
@@ -221,6 +224,7 @@ struct RosterView: View {
     private func reload() async {
         showRenameHint = false
         showMuteHint = false
+        outgoingE1W = nil
         await calendarService.fetchNextBusinessDayRoster()
         await loadContacts()
     }
@@ -242,6 +246,18 @@ struct RosterView: View {
                     loaded[i].phoneNumber = result.phone
                 }
             }
+
+            // Enrich the outgoing E1W (Thu/Fri → Mon transition) with contact name
+            if var outgoing = calendarService.outgoingE1W,
+               let result = await ContactsService.shared.lookup(rawName: outgoing.rawName) {
+                outgoing.displayName = result.displayName
+                outgoing.phoneNumber = result.phone
+                outgoingE1W = outgoing
+            } else {
+                outgoingE1W = calendarService.outgoingE1W
+            }
+        } else {
+            outgoingE1W = calendarService.outgoingE1W
         }
 
         assignments = loaded

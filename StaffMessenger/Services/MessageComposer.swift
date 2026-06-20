@@ -1,22 +1,25 @@
 import Foundation
 
 struct MessageComposer {
-    // Generates the daily staffing message.
-    // Format matches the example:
-    //   Good morning!
-    //
-    //   Thursday June 19 Staffing
-    //   E1W: Tyler Chernin
-    //   E1am: Helge Eilers
-    //   ...
-    static func compose(for date: Date, assignments: [StaffAssignment]) -> String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEEE MMMM d"   // e.g. "Thursday June 19"
-        let dateString = fmt.string(from: date)
+    static func compose(for date: Date,
+                        assignments: [StaffAssignment],
+                        outgoingE1W: StaffAssignment? = nil) -> String {
+        let dateFmt = DateFormatter()
+        dateFmt.dateFormat = "EEEE MMMM d"
+        let dayAbbr = DateFormatter()
+        dayAbbr.dateFormat = "EEE"   // "Mon", "Fri", etc.
 
-        var lines = ["Good morning!", "", "\(dateString) Staffing"]
+        var lines = ["Good morning!", "", "\(dateFmt.string(from: date)) Staffing"]
+
         for a in assignments {
-            lines.append("\(a.prefix): \(a.displayName)")
+            if a.prefix == "E1W", let outgoing = outgoingE1W {
+                // Two-line handoff: outgoing from today, incoming from target Monday
+                let fromDay = dayAbbr.string(from: Date())
+                lines.append("E1W (\(fromDay)): \(outgoing.displayName)")
+                lines.append("E1W (Mon): \(a.displayName)")
+            } else {
+                lines.append("\(a.prefix): \(a.displayName)")
+            }
         }
         return lines.joined(separator: "\n")
     }
