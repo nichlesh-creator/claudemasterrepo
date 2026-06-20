@@ -8,7 +8,6 @@ struct RosterView: View {
     @State private var isLoadingContacts = false
     @State private var showSettings = false
     @State private var showSMS = false
-    @State private var showNonIphoneSMS = false
     @State private var showRenameHint = false
     @State private var showMuteHint = false
 
@@ -32,6 +31,7 @@ struct RosterView: View {
         var phones = assignments.compactMap { $0.phoneNumber }
         let coord = calendarService.coordinatorPhone.trimmingCharacters(in: .whitespaces)
         if !coord.isEmpty { phones.insert(coord, at: 0) }
+        phones += calendarService.nonIphonePhones
         return phones
     }
 
@@ -210,23 +210,11 @@ struct RosterView: View {
         .navigationDestination(isPresented: $showSettings) {
             SetupView()
         }
-        // Primary send: staff + coordinator
         .smsComposer(isPresented: $showSMS, recipients: allRecipients, messageBody: messageText) { result in
             guard result == .sent else { return }
             showRenameHint = true
             showMuteHint = !isInStaffingGroup
-            let nonIphone = calendarService.nonIphonePhones
-            guard !nonIphone.isEmpty else { return }
-            // Delay so the first sheet fully dismisses before the second one appears
-            Task {
-                try? await Task.sleep(nanoseconds: 600_000_000)
-                showNonIphoneSMS = true
-            }
         }
-        // Secondary send: non-iPhone (Android) users
-        .smsComposer(isPresented: $showNonIphoneSMS,
-                     recipients: calendarService.nonIphonePhones,
-                     messageBody: messageText)
         .task { await reload() }
     }
 

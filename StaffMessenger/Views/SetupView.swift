@@ -71,7 +71,7 @@ struct SetupView: View {
             } header: {
                 Text("Non-iPhone Users (comma-separated)")
             } footer: {
-                Text("After the main group SMS is sent, a separate message is sent to these numbers (e.g. Android users who can't join the iMessage group).")
+                Text("These numbers are included in the single group send alongside all iPhone recipients (e.g. Android users).")
             }
 
             Section {
