@@ -78,23 +78,19 @@ class CalendarService: ObservableObject {
             guard let startDate = item.start.resolvedDate,
                   let endDate = item.end.resolvedDate else { return nil }
 
-            var seen = Set<String>()
-            var providers: [Provider] = []
+            // Priority 1: names in brackets in the title, e.g. "[Chernin, Tyl]"
+            // This is checked first because the organizer is just the calendar admin,
+            // not the actual provider listed for the shift.
+            var providers = CalendarService.extractProvidersFromTitle(item.summary ?? "")
 
-            for attendee in item.attendees ?? [] {
-                if seen.insert(attendee.email).inserted {
-                    providers.append(Provider(email: attendee.email, displayName: attendee.displayName))
-                }
-            }
-
-            if let org = item.organizer, seen.insert(org.email).inserted {
-                providers.append(Provider(email: org.email, displayName: org.displayName))
-            }
-
-            // Fall back to parsing names from the event title when no attendees are listed.
-            // Matches the pattern "[LastName, FirstName]" used by many scheduling systems.
+            // Priority 2: explicit attendees (only used when no brackets found)
             if providers.isEmpty {
-                providers = CalendarService.extractProvidersFromTitle(item.summary ?? "")
+                var seen = Set<String>()
+                for attendee in item.attendees ?? [] {
+                    if seen.insert(attendee.email).inserted {
+                        providers.append(Provider(email: attendee.email, displayName: attendee.displayName))
+                    }
+                }
             }
 
             guard !providers.isEmpty else { return nil }
