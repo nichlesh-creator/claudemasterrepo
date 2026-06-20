@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct StaffMessengerApp: App {
@@ -8,6 +9,7 @@ struct StaffMessengerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(calendarService)
+                .task { await NotificationService.requestPermission() }
         }
     }
 }

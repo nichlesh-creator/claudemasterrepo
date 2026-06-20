@@ -7,6 +7,9 @@ struct SetupView: View {
     @State private var apiKeyInput = ""
     @State private var calendarIDInput = ""
     @State private var coordinatorPhoneInput = ""
+    @State private var myPhoneInput = ""
+    @State private var nonIphonePhonesInput = ""
+    @State private var notificationsEnabled = false
     @State private var prefixesInput = ""
     @State private var isSaving = false
 
@@ -53,13 +56,40 @@ struct SetupView: View {
             }
 
             Section {
+                TextField("+1 (555) 000-0000", text: $myPhoneInput)
+                    .keyboardType(.phonePad)
+            } header: {
+                Text("My Phone Number")
+            } footer: {
+                Text("Used to detect whether you are in today's staffing group. If you're not, the app reminds you to mute the group chat.")
+            }
+
+            Section {
+                TextField("+1 (555) 111-0000, +1 (555) 222-0000", text: $nonIphonePhonesInput)
+                    .keyboardType(.phonePad)
+                    .autocorrectionDisabled()
+            } header: {
+                Text("Non-iPhone Users (comma-separated)")
+            } footer: {
+                Text("After the main group SMS is sent, a separate message is sent to these numbers (e.g. Android users who can't join the iMessage group).")
+            }
+
+            Section {
+                Toggle("7:45 am Daily Reminder", isOn: $notificationsEnabled)
+            } header: {
+                Text("Notifications")
+            } footer: {
+                Text("Sends a daily notification at 7:45 am reminding you to open the app and send the staffing message.")
+            }
+
+            Section {
                 TextField("E1W, E1am, OI-1, Z1am, BF1am, BE1am, EP1am", text: $prefixesInput)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
             } header: {
                 Text("Event Prefixes (comma-separated, in message order)")
             } footer: {
-                Text("Only events whose title starts with one of these prefixes will be included. Order here = order in the message.")
+                Text("Only events whose title starts with one of these prefixes will be included. BF1am must be present for the day to count as a staffing day.")
             }
 
             Section {
@@ -88,15 +118,21 @@ struct SetupView: View {
             apiKeyInput           = calendarService.apiKey
             calendarIDInput       = calendarService.calendarID
             coordinatorPhoneInput = calendarService.coordinatorPhone
+            myPhoneInput          = calendarService.myPhoneNumber
+            nonIphonePhonesInput  = calendarService.nonIphonePhonesRaw
+            notificationsEnabled  = calendarService.notificationsEnabled
             prefixesInput         = calendarService.targetPrefixes.joined(separator: ", ")
         }
     }
 
     private func save() {
         isSaving = true
-        calendarService.apiKey           = apiKeyInput.trimmingCharacters(in: .whitespaces)
-        calendarService.calendarID       = calendarIDInput.trimmingCharacters(in: .whitespaces)
-        calendarService.coordinatorPhone = coordinatorPhoneInput.trimmingCharacters(in: .whitespaces)
+        calendarService.apiKey             = apiKeyInput.trimmingCharacters(in: .whitespaces)
+        calendarService.calendarID         = calendarIDInput.trimmingCharacters(in: .whitespaces)
+        calendarService.coordinatorPhone   = coordinatorPhoneInput.trimmingCharacters(in: .whitespaces)
+        calendarService.myPhoneNumber      = myPhoneInput.trimmingCharacters(in: .whitespaces)
+        calendarService.nonIphonePhonesRaw = nonIphonePhonesInput.trimmingCharacters(in: .whitespaces)
+        calendarService.notificationsEnabled = notificationsEnabled
 
         let prefixes = prefixesInput
             .components(separatedBy: ",")
@@ -107,7 +143,7 @@ struct SetupView: View {
         }
 
         Task {
-            await calendarService.fetchTomorrowsRoster()
+            await calendarService.fetchNextBusinessDayRoster()
             isSaving = false
             if calendarService.errorMessage == nil { dismiss() }
         }

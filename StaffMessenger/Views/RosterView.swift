@@ -8,15 +8,24 @@ struct RosterView: View {
     @State private var isLoadingContacts = false
     @State private var showSettings = false
     @State private var showSMS = false
+    @State private var showNonIphoneSMS = false
+    @State private var showRenameHint = false
+    @State private var showMuteHint = false
 
-    private var tomorrowLabel: String {
+    private var nextDayLabel: String {
         let fmt = DateFormatter()
         fmt.dateFormat = "EEEE, MMMM d"
-        return fmt.string(from: calendarService.tomorrowDate)
+        return fmt.string(from: calendarService.nextBusinessDay)
+    }
+
+    private var renameSuggestion: String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MM/dd"
+        return "Staffing Thread for \(fmt.string(from: calendarService.nextBusinessDay))"
     }
 
     private var messageText: String {
-        MessageComposer.compose(for: calendarService.tomorrowDate, assignments: assignments)
+        MessageComposer.compose(for: calendarService.nextBusinessDay, assignments: assignments)
     }
 
     private var allRecipients: [String] {
@@ -26,75 +35,134 @@ struct RosterView: View {
         return phones
     }
 
+    private var isInStaffingGroup: Bool {
+        let myPhone = calendarService.myPhoneNumber.trimmingCharacters(in: .whitespaces)
+        guard !myPhone.isEmpty else { return true }
+        return allRecipients.contains(myPhone)
+    }
+
     private var canSend: Bool {
         MFMessageComposeViewController.canSendText() && !allRecipients.isEmpty
     }
 
     var body: some View {
         List {
-            // Date banner
             Section {
                 HStack {
                     Image(systemName: "calendar")
                         .foregroundStyle(.blue)
-                    Text(tomorrowLabel)
+                    Text(nextDayLabel)
                         .font(.headline)
                 }
             }
 
-            // Roster
-            Section("Staff") {
-                if calendarService.isLoading || isLoadingContacts {
-                    HStack {
-                        Spacer()
-                        ProgressView(calendarService.isLoading ? "Loading calendar…" : "Looking up contacts…")
-                        Spacer()
-                    }
-                } else if let error = calendarService.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                        .font(.callout)
-                } else if assignments.isEmpty {
-                    Text("No matching events found for tomorrow.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(assignments) { assignment in
-                        AssignmentRow(assignment: assignment)
-                    }
-                }
-            }
-
-            // Message preview
-            if !assignments.isEmpty {
-                Section("Message Preview") {
-                    Text(messageText)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(.primary)
-                }
-
-                // Recipients summary
-                Section("Recipients") {
-                    let coord = calendarService.coordinatorPhone.trimmingCharacters(in: .whitespaces)
-                    if !coord.isEmpty {
-                        Label("Coordinator: \(coord)", systemImage: "star.fill")
+            if !calendarService.isLoading && !isLoadingContacts
+                && calendarService.errorMessage == nil
+                && !calendarService.assignments.isEmpty
+                && !calendarService.isStaffingDay
+            {
+                Section {
+                    VStack(spacing: 10) {
+                        Image(systemName: "moon.zzz.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("No staffing scheduled")
+                            .font(.headline)
+                        Text("No BF1am event found for \(nextDayLabel). This may be a holiday or scheduled day off.")
                             .font(.caption)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
                     }
-                    ForEach(assignments) { a in
-                        if let phone = a.phoneNumber {
-                            Label("\(a.displayName): \(phone)", systemImage: "checkmark.circle.fill")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                }
+            } else {
+                Section("Staff") {
+                    if calendarService.isLoading || isLoadingContacts {
+                        HStack {
+                            Spacer()
+                            ProgressView(calendarService.isLoading ? "Loading calendar…" : "Looking up contacts…")
+                            Spacer()
+                        }
+                    } else if let error = calendarService.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                            .font(.callout)
+                    } else if assignments.isEmpty {
+                        Text("No matching events found for \(nextDayLabel).")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(assignments) { assignment in
+                            AssignmentRow(assignment: assignment)
+                        }
+                    }
+                }
+
+                if !assignments.isEmpty {
+                    Section("Message Preview") {
+                        Text(messageText)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.primary)
+                    }
+
+                    Section("Recipients") {
+                        let coord = calendarService.coordinatorPhone.trimmingCharacters(in: .whitespaces)
+                        if !coord.isEmpty {
+                            Label("Coordinator: \(coord)", systemImage: "star.fill")
                                 .font(.caption)
-                                .foregroundStyle(.green)
-                        } else {
-                            Label("\(a.displayName): not found in Contacts", systemImage: "exclamationmark.circle")
-                                .font(.caption)
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.blue)
+                        }
+                        ForEach(assignments) { a in
+                            if let phone = a.phoneNumber {
+                                Label("\(a.displayName): \(phone)", systemImage: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.green)
+                            } else {
+                                Label("\(a.displayName): not found in Contacts", systemImage: "exclamationmark.circle")
+                                    .font(.caption)
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                    }
+
+                    if showRenameHint {
+                        Section {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Label("Rename the group chat", systemImage: "pencil.circle.fill")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(.orange)
+                                Text("In Messages, tap the group name at the top → Edit. Paste:")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                HStack {
+                                    Text(renameSuggestion)
+                                        .font(.system(.callout, design: .monospaced))
+                                    Spacer()
+                                    Button {
+                                        UIPasteboard.general.string = renameSuggestion
+                                    } label: {
+                                        Label("Copy", systemImage: "doc.on.doc")
+                                            .font(.caption)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if showMuteHint {
+                        Section {
+                            Label(
+                                "You're not in today's staffing group. In Messages, swipe left on the thread → More → Hide Alerts to mute it.",
+                                systemImage: "bell.slash.fill"
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.orange)
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Tomorrow's Roster")
+        .navigationTitle("Next-Day Roster")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showSettings = true } label: { Image(systemName: "gear") }
@@ -109,43 +177,63 @@ struct RosterView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Divider()
-                Button {
-                    showSMS = true
-                } label: {
-                    Label(
-                        "Send to \(allRecipients.count) Recipient\(allRecipients.count == 1 ? "" : "s")",
-                        systemImage: "message.fill"
-                    )
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
+            if calendarService.isStaffingDay && !assignments.isEmpty {
+                VStack(spacing: 0) {
+                    Divider()
+                    Button {
+                        showSMS = true
+                    } label: {
+                        Label(
+                            "Send to \(allRecipients.count) Recipient\(allRecipients.count == 1 ? "" : "s")",
+                            systemImage: "message.fill"
+                        )
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(canSend ? Color.green : Color.gray)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(!canSend)
                     .padding()
-                    .background(canSend ? Color.green : Color.gray)
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .disabled(!canSend)
-                .padding()
-                .background(.regularMaterial)
+                    .background(.regularMaterial)
 
-                if !MFMessageComposeViewController.canSendText() {
-                    Text("SMS only works on a real iPhone, not the simulator.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .padding(.bottom, 8)
+                    if !MFMessageComposeViewController.canSendText() {
+                        Text("SMS only works on a real iPhone, not the simulator.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .padding(.bottom, 8)
+                    }
                 }
             }
         }
         .navigationDestination(isPresented: $showSettings) {
             SetupView()
         }
-        .smsComposer(isPresented: $showSMS, recipients: allRecipients, messageBody: messageText)
+        // Primary send: staff + coordinator
+        .smsComposer(isPresented: $showSMS, recipients: allRecipients, messageBody: messageText) { result in
+            guard result == .sent else { return }
+            showRenameHint = true
+            showMuteHint = !isInStaffingGroup
+            let nonIphone = calendarService.nonIphonePhones
+            guard !nonIphone.isEmpty else { return }
+            // Delay so the first sheet fully dismisses before the second one appears
+            Task {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                showNonIphoneSMS = true
+            }
+        }
+        // Secondary send: non-iPhone (Android) users
+        .smsComposer(isPresented: $showNonIphoneSMS,
+                     recipients: calendarService.nonIphonePhones,
+                     messageBody: messageText)
         .task { await reload() }
     }
 
     private func reload() async {
-        await calendarService.fetchTomorrowsRoster()
+        showRenameHint = false
+        showMuteHint = false
+        await calendarService.fetchNextBusinessDayRoster()
         await loadContacts()
     }
 
