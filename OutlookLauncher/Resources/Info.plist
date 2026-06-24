@@ -2,10 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Required so canOpenURL can check whether Outlook is installed -->
+    <!-- Allow canOpenURL to check for the Outlook app -->
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>ms-outlook</string>
+    </array>
+
+    <!--
+        MSAL redirect URI — replace YOUR_BUNDLE_ID with your actual bundle identifier
+        (e.g. com.yourname.OutlookLauncher).
+        This must exactly match the redirect URI in your Azure App Registration.
+    -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>msauth.YOUR_BUNDLE_ID</string>
+            </array>
+        </dict>
     </array>
 </dict>
 </plist>
