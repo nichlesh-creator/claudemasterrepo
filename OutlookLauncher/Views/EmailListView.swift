@@ -3,6 +3,7 @@ import SwiftUI
 struct EmailListView: View {
     @EnvironmentObject var authService: AuthService
     @AppStorage("anthropicApiKey") private var anthropicKey = ""
+    @AppStorage("remindersEnabled") private var remindersEnabled = false
 
     @State private var emails: [GraphEmail] = []
     @State private var isLoading = false
@@ -49,14 +50,29 @@ struct EmailListView: View {
                     .disabled(isLoading)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Sign Out") { authService.signOut() }
+                    HStack {
+                        // Bell toggles the three daily reminders (5:30am, 2pm, 6pm)
+                        Button {
+                            Task { await toggleReminders() }
+                        } label: {
+                            Image(systemName: remindersEnabled ? "bell.fill" : "bell.slash")
+                        }
+                        Button("Sign Out") { authService.signOut() }
+                    }
                 }
             }
             .sheet(item: $selectedEmail) { email in
                 EmailDetailView(email: email, anthropicApiKey: anthropicKey)
                     .environmentObject(authService)
             }
-            .task { await loadEmails() }
+            .task {
+                // Schedule reminders on first sign-in; re-schedule silently on subsequent launches
+                if !remindersEnabled {
+                    await NotificationService.shared.requestPermissionAndSchedule()
+                    remindersEnabled = true
+                }
+                await loadEmails()
+            }
         }
     }
 
@@ -70,6 +86,16 @@ struct EmailListView: View {
             errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    private func toggleReminders() async {
+        if remindersEnabled {
+            NotificationService.shared.cancel()
+            remindersEnabled = false
+        } else {
+            await NotificationService.shared.requestPermissionAndSchedule()
+            remindersEnabled = true
+        }
     }
 }
 
